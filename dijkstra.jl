@@ -1,17 +1,14 @@
 using Base.Collections
 
-# TODO: load gml
-# TODO: inf
-
 """ Graph Edge """
 type Edge
   from::Int
   to::Int
-  weight::Int
+  weight::Float64
 
   toString::Function
 
-  function Edge(from::Int, to::Int, weight::Int)
+  function Edge(from::Int, to::Int, weight::Float64)
     this = new()
     this.from = from
     this.to = to
@@ -56,7 +53,7 @@ end
 """ Shortest path Dijkstra algorithm """
 type DijkstraSP
   pq::PriorityQueue
-  distTo::Array{Int}
+  distTo::Array{Float64}
   edgeTo::Array{Edge}
 
   relax::Function
@@ -68,7 +65,7 @@ type DijkstraSP
     this = new()
     pq = PriorityQueue()
     # double ?
-    distTo = Array{Int}(g.V)
+    distTo = Array{Float64}(g.V)
     vertexTo = Array{Int}(g.V)
 
     # Core of the algorithm, walk the graph
@@ -93,7 +90,7 @@ type DijkstraSP
 
     # Returns true if there is a path to destination
     this.hasPathTo = function (to::Int)
-      return distTo[to] < 100 #  XXX
+      return distTo[to] < Inf
     end
 
     # Path to a vertex
@@ -123,14 +120,15 @@ type DijkstraSP
     end
 
     # Initialise paths to infinity
+    # Also initialise all vertex path to 0
     for v = 1 : length(distTo)
-      distTo[v] = 100 # XXX
+      distTo[v] = Inf
       vertexTo[v] = 0
     end
 
     # Initialise the min priority queue
     for v = 1 : length(g.adj)
-      enqueue!(pq, v, 100)
+      enqueue!(pq, v, Inf)
     end
 
     # Initialise source to 0
@@ -139,7 +137,8 @@ type DijkstraSP
     # Add the source to the queue
     pq[s] = 0
 
-    # Walk through the graph to update distTo
+    # Walk through the graph to update distTo thus finding the shortest path
+    # for all other vertices
     while (!isempty(pq))
       this.relax(dequeue!(pq))
     end
@@ -149,7 +148,7 @@ type DijkstraSP
 end
 
 """
-test undirected weighted graph
+test with an acyclic undirected weighted graph
 ------------------------------
 
 A          5            B
@@ -168,22 +167,22 @@ C           0            D
 
 From A, distTo[E] should be 3 and the path [A, C, D, B, E]
 """
-ab = Edge(1, 2, 5)
-ac = Edge(1, 3, 1)
+ab = Edge(1, 2, 5.0)
+ac = Edge(1, 3, 1.0)
 
-ba = Edge(2, 1, 5)
-bd = Edge(2, 4, 1)
-be = Edge(2, 5, 1)
+ba = Edge(2, 1, 5.0)
+bd = Edge(2, 4, 1.0)
+be = Edge(2, 5, 1.0)
 
-ca = Edge(3, 1, 1)
-cd = Edge(3, 4, 0)
+ca = Edge(3, 1, 1.0)
+cd = Edge(3, 4, 0.0)
 
-dc = Edge(4, 3, 0)
-db = Edge(4, 2, 1)
-de = Edge(4, 5, 3)
+dc = Edge(4, 3, 0.0)
+db = Edge(4, 2, 1.0)
+de = Edge(4, 5, 3.0)
 
-eb = Edge(5, 2, 1)
-ed = Edge(5, 4, 3)
+eb = Edge(5, 2, 1.0)
+ed = Edge(5, 4, 3.0)
 
 # adjacency lists
 adj = Array{Edge}[]
