@@ -1,6 +1,7 @@
 using Base.Collections
 
 # TODO: load gml
+# TODO: inf
 
 """ Graph Edge """
 type Edge
@@ -68,43 +69,55 @@ type DijkstraSP
     pq = PriorityQueue()
     # double ?
     distTo = Array{Int}(g.V)
-    edgeTo = Array{Edge}(g.V)
+    vertexTo = Array{Int}(g.V)
 
     # Core of the algorithm, walk the graph
     this.relax = function (v::Int)
+      # For each vertex neighbour
       for i = 1 : length(g.adj[v])
         e = g.adj[v][i]
         w = e.to
         alt = distTo[v] + e.weight
+        # If the weight path from source + the edge's weight is smaller than
+        # the distance recorded to w, update it
         if (distTo[w] > alt)
+          # Update distance to vertex
           distTo[w] = alt
-          edgeTo[w] = e
-          # XXX change key? -- check complexity of dequeue and enqueue
-          try
-            dequeue!(pq, w)
-          catch e
-          end
-          enqueue!(pq, w, distTo[w])
+          # Update path to vertex
+          vertexTo[w] = e.from
+          # Change vertex priority
+          pq[w] = distTo[w]
         end
       end
     end
 
     # Returns true if there is a path to destination
     this.hasPathTo = function (to::Int)
-      return pathTo[to] < 100 #  XXX
+      return distTo[to] < 100 #  XXX
     end
 
     # Path to a vertex
     # returns a vector of nodes to the destination
     this.pathTo = function (to::Int)
-      if !hasPathTo(to)
+      # Return if there is no path
+      if (!this.hasPathTo(to))
         return
       end
 
-      #for i = 1 : edgeTo
-      #end
+      # Build vector going back from destination to source
+      path = Int[]
+      from = vertexTo[to]
+      while (from != 0)
+        push!(path, from)
+        from = vertexTo[from]
+      end
+      reverse!(path)
+      push!(path, to)
+
+      return path
     end
 
+    # Return distance to destination
     this.dist = function (to::Int)
       return distTo[to]
     end
@@ -112,12 +125,19 @@ type DijkstraSP
     # Initialise paths to infinity
     for v = 1 : length(distTo)
       distTo[v] = 100 # XXX
+      vertexTo[v] = 0
     end
+
+    # Initialise the min priority queue
+    for v = 1 : length(g.adj)
+      enqueue!(pq, v, 100)
+    end
+
     # Initialise source to 0
     distTo[s] = 0
 
     # Add the source to the queue
-    enqueue!(pq, s, 0)
+    pq[s] = 0
 
     # Walk through the graph to update distTo
     while (!isempty(pq))
@@ -146,7 +166,7 @@ A          5            B
  +---------------------XXXXXX
 C           0            D
 
-distTo[E] should be 3 and the path [A, C, D, B, E]
+From A, distTo[E] should be 3 and the path [A, C, D, B, E]
 """
 ab = Edge(1, 2, 5)
 ac = Edge(1, 3, 1)
@@ -199,4 +219,5 @@ push!(adj, adjE)
 g = EdgeWeightedGraph(5, 6, adj)
 d = DijkstraSP(g, 1)
 println(d.dist(5))
+println(d.pathTo(5))
 # print adjacency list
