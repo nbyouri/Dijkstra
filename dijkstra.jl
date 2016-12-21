@@ -61,6 +61,7 @@ type DijkstraSP
   relax::Function
   pathTo::Function
   dist::Function
+  hasPathTo::Function
 
   function DijkstraSP(g::EdgeWeightedGraph, s::Int)
     this = new()
@@ -78,7 +79,7 @@ type DijkstraSP
         if (distTo[w] > alt)
           distTo[w] = alt
           edgeTo[w] = e
-          # XXX change key?
+          # XXX change key? -- check complexity of dequeue and enqueue
           try
             dequeue!(pq, w)
           catch e
@@ -86,6 +87,11 @@ type DijkstraSP
           enqueue!(pq, w, distTo[w])
         end
       end
+    end
+
+    # Returns true if there is a path to destination
+    this.hasPathTo = function (to::Int)
+      return pathTo[to] < 100 #  XXX
     end
 
     # Path to a vertex
@@ -140,6 +146,7 @@ A          5            B
  +---------------------XXXXXX
 C           0            D
 
+distTo[E] should be 3 and the path [A, C, D, B, E]
 """
 ab = Edge(1, 2, 5)
 ac = Edge(1, 3, 1)
@@ -149,9 +156,9 @@ bd = Edge(2, 4, 1)
 be = Edge(2, 5, 1)
 
 ca = Edge(3, 1, 1)
-cd = Edge(3, 4, 10)
+cd = Edge(3, 4, 0)
 
-dc = Edge(4, 3, 10)
+dc = Edge(4, 3, 0)
 db = Edge(4, 2, 1)
 de = Edge(4, 5, 3)
 
