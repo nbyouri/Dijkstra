@@ -1,29 +1,195 @@
-∞ = Inf
-g = [0 3 ∞ ∞ ∞ ∞ ∞;
-     3 0 2 ∞ 4 ∞ ∞;
-     ∞ 2 0 8 1 ∞ ∞;
-     ∞ ∞ 8 0 ∞ 5 6;
-     ∞ 4 1 ∞ 0 ∞ ∞;
-     ∞ ∞ ∞ 5 ∞ 0 ∞;
-     ∞ ∞ ∞ 6 ∞ ∞ 0]
+using Base.Collections
 
-function neighbours(v)
-  col = find((v .!= ∞) &(v .!= 0))
-  col, v[col]
-end
+# TODO: load gml
 
-function dijkstra(g, i, j)
-  nb = size(g, 1)
-  dists = fill(∞, nb, nb)
-  dists[:,i] = 0
-  for k in 1:nb
-    """ n vectors of v neighbours """
-    n = neighbours(g[k,:])
-    """ size of vector is defined by first element size """
-    for v in 1:length(n[1])
-      println(n[1][v]," " ,n[2][v])
+""" Graph Edge """
+type Edge
+  from::Int
+  to::Int
+  weight::Int
+
+  toString::Function
+
+  function Edge(from::Int, to::Int, weight::Int)
+    this = new()
+    this.from = from
+    this.to = to
+    this.weight = weight
+
+    # Print Edge fields
+    this.toString = function ()
+      println(this.from, " <-> ", this.to, " = ",  this.weight)
     end
+
+    return this
   end
 end
 
-println(dijkstra(a, 1, 6))
+""" Edge Weighted undirected graph """
+type EdgeWeightedGraph
+  V::Int
+  E::Int
+  adj::Array{Array{Edge}}
+
+  toString::Function
+
+  function EdgeWeightedGraph(V::Int, E::Int, adj::Array{Array{Edge}})
+    this = new()
+    this.V = V
+    this.E = E
+    this.adj = adj
+
+    # Print adjacency matrix for the graph
+    this.toString = function ()
+      for i = 1 : V
+        for j = 1 : length(adj[i])
+          adj[i][j].toString()
+        end
+      end
+    end
+
+    return this
+  end
+end
+
+""" Shortest path Dijkstra algorithm """
+type DijkstraSP
+  pq::PriorityQueue
+  distTo::Array{Int}
+  edgeTo::Array{Edge}
+
+  relax::Function
+  pathTo::Function
+  dist::Function
+
+  function DijkstraSP(g::EdgeWeightedGraph, s::Int)
+    this = new()
+    pq = PriorityQueue()
+    # double ?
+    distTo = Array{Int}(g.V)
+    edgeTo = Array{Edge}(g.V)
+
+    # Core of the algorithm, walk the graph
+    this.relax = function (v::Int)
+      for i = 1 : length(g.adj[v])
+        e = g.adj[v][i]
+        w = e.to
+        alt = distTo[v] + e.weight
+        if (distTo[w] > alt)
+          distTo[w] = alt
+          edgeTo[w] = e
+          # XXX change key?
+          try
+            dequeue!(pq, w)
+          catch e
+          end
+          enqueue!(pq, w, distTo[w])
+        end
+      end
+    end
+
+    # Path to a vertex
+    # returns a vector of nodes to the destination
+    this.pathTo = function (to::Int)
+      if !hasPathTo(to)
+        return
+      end
+
+      #for i = 1 : edgeTo
+      #end
+    end
+
+    this.dist = function (to::Int)
+      return distTo[to]
+    end
+
+    # Initialise paths to infinity
+    for v = 1 : length(distTo)
+      distTo[v] = 100 # XXX
+    end
+    # Initialise source to 0
+    distTo[s] = 0
+
+    # Add the source to the queue
+    enqueue!(pq, s, 0)
+
+    # Walk through the graph to update distTo
+    while (!isempty(pq))
+      this.relax(dequeue!(pq))
+    end
+
+    return this
+  end
+end
+
+"""
+test undirected weighted graph
+------------------------------
+
+A          5            B
+ +----------------------XXXXXXXXX   1
+ |                      |       XXXXXXX
+ |                      |             XXXX
+ |                      |                XXXXX
+ |                      |                   XXX E
+1|                      |1                XXX
+ |                      |               XXX
+ |                      |          XXXXX
+ |                      |       XXXX 3
+ |                      |   XXXXX
+ +---------------------XXXXXX
+C           0            D
+
+"""
+ab = Edge(1, 2, 5)
+ac = Edge(1, 3, 1)
+
+ba = Edge(2, 1, 5)
+bd = Edge(2, 4, 1)
+be = Edge(2, 5, 1)
+
+ca = Edge(3, 1, 1)
+cd = Edge(3, 4, 10)
+
+dc = Edge(4, 3, 10)
+db = Edge(4, 2, 1)
+de = Edge(4, 5, 3)
+
+eb = Edge(5, 2, 1)
+ed = Edge(5, 4, 3)
+
+# adjacency lists
+adj = Array{Edge}[]
+adjA = Edge[]
+push!(adjA, ab) # A <-> B
+push!(adjA, ac) # A <-> C
+
+adjB = Edge[]
+push!(adjB, ba) # B <-> A
+push!(adjB, bd) # B <-> D
+push!(adjB, be) # B <-> E
+
+adjC = Edge[]
+push!(adjC, ca) # C <-> A
+push!(adjC, cd) # C <-> D
+
+adjD = Edge[]
+push!(adjD, dc) # D <-> C
+push!(adjD, db) # D <-> B
+push!(adjD, de) # D <-> E
+
+adjE = Edge[]
+push!(adjE, eb) # E <-> B
+push!(adjE, ed) # E <-> D
+
+push!(adj, adjA)
+push!(adj, adjB)
+push!(adj, adjC)
+push!(adj, adjD)
+push!(adj, adjE)
+
+# graph with 5 vertices, 6 edges
+g = EdgeWeightedGraph(5, 6, adj)
+d = DijkstraSP(g, 1)
+println(d.dist(5))
+# print adjacency list
