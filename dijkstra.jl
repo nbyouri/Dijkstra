@@ -1,5 +1,7 @@
 using Base.Collections
 
+# XXX self loops in dijkstra?
+
 """ Graph Edge """
 type Edge
   from::Int
@@ -54,7 +56,7 @@ end
 type DijkstraSP
   pq::PriorityQueue
   distTo::Array{Float64}
-  edgeTo::Array{Edge}
+  vertexTo::Array{Edge}
 
   relax::Function
   pathTo::Function
@@ -62,11 +64,8 @@ type DijkstraSP
   hasPathTo::Function
 
   function DijkstraSP(g::EdgeWeightedGraph, s::Int)
+    # Intanciate object
     this = new()
-    pq = PriorityQueue()
-    # double ?
-    distTo = Array{Float64}(g.V)
-    vertexTo = Array{Int}(g.V)
 
     # Core of the algorithm, walk the graph
     this.relax = function (v::Int)
@@ -119,6 +118,11 @@ type DijkstraSP
       return distTo[to]
     end
 
+    # Initialise fields
+    pq = PriorityQueue()
+    distTo = Array{Float64}(g.V)
+    vertexTo = Array{Int}(g.V)
+
     # Initialise paths to infinity
     # Also initialise all vertex path to 0
     for v = 1 : length(distTo)
@@ -146,6 +150,100 @@ type DijkstraSP
     return this
   end
 end
+
+""" Shortest path Floyd-Warshall algorithm """
+type FloydWarshallSP
+  distTo::Array{Array{Float64}}
+  vertexTo::Array{Array{Edge}}
+
+  path::Function
+  dist::Function
+  hasPath::Function
+
+  function FloydWarshallSP(g::EdgeWeightedGraph, s::Int)
+    # Intanciate object
+    this = new()
+
+    # Returns true if there is a path to destination
+    this.hasPath = function (from::Int, to::Int)
+      return distTo[from][to] < Inf
+    end
+
+    # Path to a vertex
+    # returns a vector of nodes to the destination
+    this.path = function (from::Int, to::Int)
+      # Return if there is no path
+      if (!this.hasPath(from, to))
+        return
+      end
+
+      # Build vector going back from destination to source
+      path = Int[]
+      parent = vertexTo[from][to]
+      while (parent != 0)
+        push!(path, parent)
+        parent = vertexTo[from][parent]
+      end
+      reverse!(path)
+      push!(path, to)
+
+      return path
+    end
+
+    # Return distance to destination
+    this.dist = function (from::Int, to::Int)
+      return distTo[from][to]
+    end
+
+    # Initialise fields
+    distTo = Array{Array{Float64}}(g.V)
+    vertexTo = Array{Array{Int}}(g.V)
+
+    # Initialise paths to infinity
+    # Also initialise all vertex path to 0
+    for v = 1 : length(distTo)
+      distTo[v] = Array{Float64}(g.V)
+      vertexTo[v] = Array{Int}(g.V)
+      for w = 1 : length(distTo[v])
+        distTo[v][w] = Inf
+        vertexTo[v][w] = 0
+      end
+    end
+
+    # Initialise distances and paths
+    for v = 1 : g.V
+      for w = 1 : length(g.adj[v])
+        e = g.adj[v][w]
+        distTo[e.from][e.to] = e.weight
+        vertexTo[e.from][e.to] = e.from
+      end
+      # Handle self loops
+      if (distTo[v][v] >= 0.0)
+        distTo[v][v] = 0.0
+        vertexTo[v][v] = 0
+      end
+    end
+
+    # FW updates
+    for i = 1 : g.V
+      for v = 1 : g.V
+        if (vertexTo[v][i] == 0)
+          continue
+        end
+        for w = 1 : g.V
+          alt = distTo[v][i] + distTo[w][i]
+          if (distTo[v][w] > alt)
+            distTo[v][w] = alt
+            vertexTo[v][w] = vertexTo[i][w]
+          end
+        end
+      end
+    end
+
+    return this
+  end
+end
+
 
 """
 test with an acyclic undirected weighted graph
@@ -216,7 +314,6 @@ push!(adj, adjE)
 
 # graph with 5 vertices, 6 edges
 g = EdgeWeightedGraph(5, 6, adj)
-d = DijkstraSP(g, 1)
-println(d.dist(5))
-println(d.pathTo(5))
-# print adjacency list
+f = FloydWarshallSP(g, 1)
+println(f.dist(1, 5))
+println(f.path(1, 5))
