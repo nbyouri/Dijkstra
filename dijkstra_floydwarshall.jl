@@ -291,6 +291,7 @@ function loadgraph(file::String)
           println("Unsupported graph")
           return
         end
+        # Get the tag values we need
         if (curLine[1] == "source")
           source = curLine[2]
         elseif (curLine[1] == "target")
@@ -300,6 +301,7 @@ function loadgraph(file::String)
         end # we don't support other tags
         edgeLine += 1
       end
+      # If we don't have a source, target or weight for an edge we don't support
       if ((length(source) == 0) ||
         (length(target) == 0) ||
         (length(weight) == 0))
@@ -331,10 +333,10 @@ function loadgraph(file::String)
 
   # Convert the dict to the adjacency 2D array
   fadj = Array{Edge}[]
+  # Create a sorted index vector
   adjIndices = collect(keys(adj))
   sort!(adjIndices)
   for v in adjIndices
-    println(v)
     push!(fadj, adj[v])
   end
 
@@ -345,7 +347,6 @@ function loadgraph(file::String)
   return EdgeWeightedGraph(length(adjIndices), length(edges), fadj)
 end
 
-#g = loadgraph("/Users/youri/Downloads/cond-mat-2005.gml")
 g = loadgraph("/Users/youri/Downloads/graph.gml")
 d = DijkstraSP(g, 1)
 println(d.dist(5))
