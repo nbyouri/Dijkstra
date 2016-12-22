@@ -1,70 +1,68 @@
 using Base.Collections
 
-# XXX self loops in dijkstra?
-
-""" Graph Edge """
+#
+# Graph Edge
+#
+#
+#
 type Edge
+  # Variables
   from::Int
   to::Int
   weight::Float64
 
-  toString::Function
-
+  # Constructor
   function Edge(from::Int, to::Int, weight::Float64)
     this = new()
     this.from = from
     this.to = to
     this.weight = weight
 
-    # Print Edge fields
-    this.toString = function ()
-      println(this.from, " <-> ", this.to, " = ",  this.weight)
-    end
-
     return this
   end
 end
 
-""" Edge Weighted undirected graph """
+#
+# Edge Weighted undirected graph
+#
+#
+#
 type EdgeWeightedGraph
+  # Variables
   V::Int
   E::Int
   adj::Array{Array{Edge}}
 
-  toString::Function
-
+  # Constructor
   function EdgeWeightedGraph(V::Int, E::Int, adj::Array{Array{Edge}})
     this = new()
     this.V = V
     this.E = E
     this.adj = adj
 
-    # Print adjacency matrix for the graph
-    this.toString = function ()
-      for i = 1 : V
-        for j = 1 : length(adj[i])
-          adj[i][j].toString()
-        end
-      end
-    end
-
     return this
   end
 end
 
-""" Shortest path Dijkstra algorithm """
+#
+# Shortest path Dijkstra algorithm
+#
+#
+#
 type DijkstraSP
-  pq::PriorityQueue
-  distTo::Array{Float64}
-  vertexTo::Array{Edge}
+  # Variables
+  pq::PriorityQueue      # minimum oriented priority queue
+  distTo::Array{Float64} # array of weights to vertices
+  vertexTo::Array{Edge}  # array of edges to vertices
 
+  # Methods
   relax::Function
   pathTo::Function
   dist::Function
   hasPathTo::Function
 
+  # Constructor
   function DijkstraSP(g::EdgeWeightedGraph, s::Int)
-    # Intanciate object
     this = new()
 
     # Core of the algorithm, walk the graph
@@ -100,14 +98,19 @@ type DijkstraSP
         return
       end
 
-      # Build vector going back from destination to source
+      # Build array of vertex indices going back from destination to source
       path = Int[]
+      # Get the vertex index closest to destination
       from = vertexTo[to]
       while (from != 0)
+        # Push the vertex index on the array
         push!(path, from)
+        # Get the parent vertex index
         from = vertexTo[from]
       end
+      # Reverse to obtain natural ordering on the array
       reverse!(path)
+      # Add the destination vertex index
       push!(path, to)
 
       return path
@@ -130,7 +133,7 @@ type DijkstraSP
       vertexTo[v] = 0
     end
 
-    # Initialise the min priority queue
+    # Initialise the minimum oriented priority queue with vertex indices
     for v = 1 : length(g.adj)
       enqueue!(pq, v, Inf)
     end
@@ -138,7 +141,7 @@ type DijkstraSP
     # Initialise source to 0
     distTo[s] = 0
 
-    # Add the source to the queue
+    # Set the priority of the source vertex to 0
     pq[s] = 0
 
     # Walk through the graph to update distTo thus finding the shortest path
@@ -151,17 +154,22 @@ type DijkstraSP
   end
 end
 
-""" Shortest path Floyd-Warshall algorithm """
+#
+# Shortest path Floyd-Warshall algorithm
+#
+#
+#
 type FloydWarshallSP
+  # Variables
   distTo::Array{Array{Float64}}
   vertexTo::Array{Array{Edge}}
 
+  # Methods
   path::Function
   dist::Function
   hasPath::Function
 
   function FloydWarshallSP(g::EdgeWeightedGraph, s::Int)
-    # Intanciate object
     this = new()
 
     # Returns true if there is a path to destination
@@ -169,8 +177,8 @@ type FloydWarshallSP
       return distTo[from][to] < Inf
     end
 
-    # Path to a vertex
-    # returns a vector of nodes to the destination
+    # Path as a vertex vector from source to destination
+    # returns a vector of nodes indices to the destination
     this.path = function (from::Int, to::Int)
       # Return if there is no path
       if (!this.hasPath(from, to))
@@ -179,12 +187,17 @@ type FloydWarshallSP
 
       # Build vector going back from destination to source
       path = Int[]
+      # Get the parent vector closest to destination
       parent = vertexTo[from][to]
       while (parent != 0)
+        # Add the vertex to the vector
         push!(path, parent)
+        # Fetch parent vertex
         parent = vertexTo[from][parent]
       end
+      # Reverse the vector order to get natural ordering
       reverse!(path)
+      # Add destination
       push!(path, to)
 
       return path
@@ -227,11 +240,16 @@ type FloydWarshallSP
     # FW updates
     for i = 1 : g.V
       for v = 1 : g.V
+        # Optimize
         if (vertexTo[v][i] == 0)
           continue
         end
         for w = 1 : g.V
+          # alt is the weight path to the neighbour vertex added to the weight
+          # from source to that vertex
           alt = distTo[v][i] + distTo[w][i]
+          # Update the weights and parent vertex if alt is smaller, meaning it
+          # will cost less to pass through that edge
           if (distTo[v][w] > alt)
             distTo[v][w] = alt
             vertexTo[v][w] = vertexTo[i][w]
@@ -245,26 +263,27 @@ type FloydWarshallSP
 end
 
 
-"""
-test with an acyclic undirected weighted graph
-------------------------------
+#
+#test with an acyclic undirected weighted graph
+#----------------------------------------------
 
-A          5            B
- +----------------------XXXXXXXXX   1
- |                      |       XXXXXXX
- |                      |             XXXX
- |                      |                XXXXX
- |                      |                   XXX E
-1|                      |1                XXX
- |                      |               XXX
- |                      |          XXXXX
- |                      |       XXXX 3
- |                      |   XXXXX
- +---------------------XXXXXX
-C           0            D
-
-From A, distTo[E] should be 3 and the path [A, C, D, B, E]
-"""
+#A          5            B
+# +----------------------XXXXXXXXX   1
+# |                      |       XXXXXXX
+# |                      |             XXXX
+# |                      |                XXXXX
+# |                      |                   XXX E
+#1|                      |1                XXX
+# |                      |               XXX
+# |                      |          XXXXX
+# |                      |       XXXX 3
+# |                      |   XXXXX
+# +---------------------XXXXXX
+#C           0            D
+#
+# From A, distTo[E] should be 3 and the path [A, C, D, B, E] and thus the output
+# vector should be [1,3,4,2,5]
+#
 ab = Edge(1, 2, 5.0)
 ac = Edge(1, 3, 1.0)
 
