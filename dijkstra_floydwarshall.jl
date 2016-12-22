@@ -68,8 +68,7 @@ type DijkstraSP
     # Core of the algorithm, walk the graph
     this.relax = function (v::Int)
       # For each vertex neighbour
-      for i = 1 : length(g.adj[v])
-        e = g.adj[v][i]
+      for e in g.adj[v]
         w = e.to
         alt = distTo[v] + e.weight
         # If the weight path from source + the edge's weight is smaller than
@@ -169,7 +168,7 @@ type FloydWarshallSP
   dist::Function
   hasPath::Function
 
-  function FloydWarshallSP(g::EdgeWeightedGraph, s::Int)
+  function FloydWarshallSP(g::EdgeWeightedGraph)
     this = new()
 
     # Returns true if there is a path to destination
@@ -240,7 +239,7 @@ type FloydWarshallSP
     # Main loop going through the matrix
     for i = 1 : g.V
       for v = 1 : g.V
-        # No path, don't go
+        # Self loop, don't go
         if (vertexTo[v][i] == 0)
           continue
         end
@@ -347,7 +346,27 @@ function loadgraph(file::String)
   return EdgeWeightedGraph(length(adjIndices), length(edges), fadj)
 end
 
+function coût(g::EdgeWeightedGraph, i::Int, j::Int)
+  d = DijkstraSP(g, i)
+  fw = FloydWarshallSP(g)
+
+  println("Dijkstra")
+  println(d.dist(j))
+  println(d.pathTo(j))
+  println("Floyd-Warshall")
+  println(fw.dist(i, j))
+  println(fw.path(i, j))
+end
+
+#
+# Main
+#
+#
+#
+# Load graph from a file where vertices are indexed from 1 to N
 g = loadgraph("/Users/youri/Downloads/graph.gml")
-d = DijkstraSP(g, 1)
-println(d.dist(5))
-println(d.pathTo(5))
+# Or from an adjacency matrix, adj being Array{Array{Edge}}
+# g = EdgeWeightedGraph(V, E, adj)
+
+# Get the shortest path from 1 to 5 on g
+coût(g, 1, 5)
