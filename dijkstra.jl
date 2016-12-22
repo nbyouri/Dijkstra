@@ -7,9 +7,9 @@ using Base.Collections
 #
 type Edge
   # Variables
-  from::Int
-  to::Int
-  weight::Float64
+  from::Int       # source vertex
+  to::Int         # destination vertex
+  weight::Float64 # edge weight
 
   # Constructor
   function Edge(from::Int, to::Int, weight::Float64)
@@ -29,9 +29,9 @@ end
 #
 type EdgeWeightedGraph
   # Variables
-  V::Int
-  E::Int
-  adj::Array{Array{Edge}}
+  V::Int                  # number of vertices
+  E::Int                  # number of edges
+  adj::Array{Array{Edge}} # adjacency matrix
 
   # Constructor
   function EdgeWeightedGraph(V::Int, E::Int, adj::Array{Array{Edge}})
@@ -237,13 +237,14 @@ type FloydWarshallSP
       end
     end
 
-    # FW updates
+    # Main loop going through the matrix
     for i = 1 : g.V
       for v = 1 : g.V
-        # Optimize
+        # No path, don't go
         if (vertexTo[v][i] == 0)
           continue
         end
+        # For each neighbour of the vertex
         for w = 1 : g.V
           # alt is the weight path to the neighbour vertex added to the weight
           # from source to that vertex
@@ -262,77 +263,90 @@ type FloydWarshallSP
   end
 end
 
-
 #
-#test with an acyclic undirected weighted graph
-#----------------------------------------------
-
-#A          5            B
-# +----------------------XXXXXXXXX   1
-# |                      |       XXXXXXX
-# |                      |             XXXX
-# |                      |                XXXXX
-# |                      |                   XXX E
-#1|                      |1                XXX
-# |                      |               XXX
-# |                      |          XXXXX
-# |                      |       XXXX 3
-# |                      |   XXXXX
-# +---------------------XXXXXX
-#C           0            D
+# Load graph from a gml file
 #
-# From A, distTo[E] should be 3 and the path [A, C, D, B, E] and thus the output
-# vector should be [1,3,4,2,5]
 #
-ab = Edge(1, 2, 5.0)
-ac = Edge(1, 3, 1.0)
+#
+function loadgraph(file::String)
+  # Open the file on disk
+  f = open(file)
+  # Load the contents into a string
+  lines = readlines(f)
 
-ba = Edge(2, 1, 5.0)
-bd = Edge(2, 4, 1.0)
-be = Edge(2, 5, 1.0)
+  # Load edges in an array
+  edges = Edge[]
+  for l in 1 : length(lines)
+    # Only deal with edge tags
+    if (contains(lines[l], "edge"))
+      edgeLine = l + 2 # Skip edge and [
+      source = ""
+      target = ""
+      weight = ""
+      # Read the edge block until ]
+      while (!contains(lines[edgeLine], "]"))
+        curLine = split(lines[edgeLine])
+        # Avoid incorrect gml
+        if (length(curLine) > 2)
+          println("Unsupported graph")
+          return
+        end
+        if (curLine[1] == "source")
+          source = curLine[2]
+        elseif (curLine[1] == "target")
+          target = curLine[2]
+        elseif (curLine[1] == "value")
+          weight = curLine[2]
+        end # we don't support other tags
+        edgeLine += 1
+      end
+      if ((length(source) == 0) ||
+        (length(target) == 0) ||
+        (length(weight) == 0))
+        println("Error: Unsupported graph")
+        return
+      else
+        # Add a new edge on the array
+        push!(edges, Edge(parse(Int, source),
+          parse(Int, target), parse(Float64, weight)))
+      end
+    end
+  end
 
-ca = Edge(3, 1, 1.0)
-cd = Edge(3, 4, 0.0)
+  # Load edges in a map with the source as key to ensure unicity to build
+  # the adjacency matrix
+  adj = Dict()
+  for e in edges
+    # Initialise the edge array
+    if (!haskey(adj, e.from))
+      adj[e.from] = Edge[]
+    end
+    if (!haskey(adj, e.to))
+      adj[e.to] = Edge[]
+    end
+    # Add the edges for the source and target vertex
+    push!(adj[e.from], e)
+    push!(adj[e.to], Edge(e.to, e.from, e.weight))
+  end
 
-dc = Edge(4, 3, 0.0)
-db = Edge(4, 2, 1.0)
-de = Edge(4, 5, 3.0)
+  # Convert the dict to the adjacency 2D array
+  fadj = Array{Edge}[]
+  adjIndices = collect(keys(adj))
+  sort!(adjIndices)
+  for v in adjIndices
+    println(v)
+    push!(fadj, adj[v])
+  end
 
-eb = Edge(5, 2, 1.0)
-ed = Edge(5, 4, 3.0)
+  # Close the file
+  close(f)
 
-# adjacency lists
-adj = Array{Edge}[]
-adjA = Edge[]
-push!(adjA, ab) # A <-> B
-push!(adjA, ac) # A <-> C
+  # Return the graph
+  return EdgeWeightedGraph(length(adjIndices), length(edges), fadj)
+end
 
-adjB = Edge[]
-push!(adjB, ba) # B <-> A
-push!(adjB, bd) # B <-> D
-push!(adjB, be) # B <-> E
-
-adjC = Edge[]
-push!(adjC, ca) # C <-> A
-push!(adjC, cd) # C <-> D
-
-adjD = Edge[]
-push!(adjD, dc) # D <-> C
-push!(adjD, db) # D <-> B
-push!(adjD, de) # D <-> E
-
-adjE = Edge[]
-push!(adjE, eb) # E <-> B
-push!(adjE, ed) # E <-> D
-
-push!(adj, adjA)
-push!(adj, adjB)
-push!(adj, adjC)
-push!(adj, adjD)
-push!(adj, adjE)
-
-# graph with 5 vertices, 6 edges
-g = EdgeWeightedGraph(5, 6, adj)
-f = FloydWarshallSP(g, 1)
-println(f.dist(1, 5))
-println(f.path(1, 5))
+#g = loadgraph("/Users/youri/Downloads/cond-mat-2005.gml")
+g = loadgraph("/Users/youri/Downloads/graph.gml")
+d = DijkstraSP(g, 1)
+println(d.dist(5))
+println(d.pathTo(5))
